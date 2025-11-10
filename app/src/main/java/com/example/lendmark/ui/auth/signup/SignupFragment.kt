@@ -79,25 +79,21 @@ class SignupFragment : Fragment() {
         }
 
         // ViewModel의 메시지 및 인증 상태 관찰
-        viewModel.errorMessage.observe(viewLifecycleOwner) { msg ->
-            if (!msg.isNullOrEmpty()) {
+        viewModel.errorMessage.observe(viewLifecycleOwner) { event ->
+            event.getContentIfNotHandled()?.let { msg ->
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
             }
         }
 
-        viewModel.emailVerified.observe(viewLifecycleOwner) { verified ->
-            if (verified) {
-                Toast.makeText(requireContext(), "Email verified successfully!", Toast.LENGTH_SHORT).show()
-                // 예: 인증 성공 시 etVerifyCode 비활성화
-                binding.etVerifyCode.isEnabled = false
-                binding.btnConfirmCode.isEnabled = false
-            }
-        }
-
-        // 인증 결과 (성공/실패) 메시지 표시
-        viewModel.errorMessage.observe(viewLifecycleOwner) { msg ->
-            if (!msg.isNullOrEmpty()) {
-                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+        viewModel.emailVerified.observe(viewLifecycleOwner) { event ->
+            event.getContentIfNotHandled()?.let { verified ->
+                if (verified) {
+                    Toast.makeText(requireContext(), "Email verified successfully!", Toast.LENGTH_SHORT).show()
+                    binding.etVerifyCode.isEnabled = false
+                    binding.btnConfirmCode.isEnabled = false
+                } else {
+                    Toast.makeText(requireContext(), "Incorrect verification code.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -115,27 +111,15 @@ class SignupFragment : Fragment() {
         }
 
         // 회원가입 성공 시
-        viewModel.signupResult.observe(viewLifecycleOwner) { success ->
-            if (success) {
-                Toast.makeText(requireContext(), "Sign up successful!", Toast.LENGTH_SHORT).show()
-                findNavController().navigate(R.id.action_signup_to_login)
+        viewModel.signupResult.observe(viewLifecycleOwner) { event ->
+            event.getContentIfNotHandled()?.let { success ->
+                if (success) {
+                    Toast.makeText(requireContext(), "Sign up successful!", Toast.LENGTH_SHORT).show()
+                    findNavController().navigate(R.id.action_signup_to_login)
+                }
             }
         }
 
-
-        viewModel.signupResult.observe(viewLifecycleOwner) { success ->
-            if (success) {
-                Toast.makeText(requireContext(), "Sign up successful!", Toast.LENGTH_SHORT).show()
-                findNavController().navigate(R.id.action_signup_to_login)
-            }
-        }
-
-        // 에러 메시지 처리
-        viewModel.errorMessage.observe(viewLifecycleOwner) { msg ->
-            if (!msg.isNullOrEmpty()) {
-                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
-            }
-        }
 
         // 뒤로가기 버튼
         binding.btnBack.setOnClickListener {
