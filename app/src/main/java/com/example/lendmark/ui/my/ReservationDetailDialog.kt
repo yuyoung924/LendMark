@@ -22,27 +22,39 @@ class ReservationDetailDialogFS(
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val binding = DialogReservationDetailBinding.inflate(LayoutInflater.from(context))
 
-        // ──────────────────────────────────────────
-        // 1) Firestore 값 UI 표시
-        // ──────────────────────────────────────────
-        binding.tvBuildingName.text = reservation.buildingId
-        binding.tvRoomName.text = reservation.roomId
+        // ──────────────────────────────────────
+        // 1) Firestore에서 building name 불러오기
+        // ──────────────────────────────────────
+        db.collection("buildings").document(reservation.buildingId)
+            .get()
+            .addOnSuccessListener { doc ->
+
+                val buildingName = doc.getString("name") ?: "Unknown Building"
+
+                // "14. Frontier Hall"
+                binding.tvBuildingName.text = "${reservation.buildingId}. $buildingName"
+            }
+            .addOnFailureListener {
+                binding.tvBuildingName.text = reservation.buildingId // fallback
+            }
+
+        // 강의실 번호
+        binding.tvRoomName.text = "No. ${reservation.roomId}"
+
+        // 날짜/시간 정보
         binding.tvDate.text = reservation.date
-        binding.tvTime.text = "${periodToTime(reservation.periodStart)} - ${periodToTime(reservation.periodEnd)}"
+        binding.tvTime.text =
+            "${periodToTime(reservation.periodStart)} - ${periodToTime(reservation.periodEnd)}"
+
         binding.tvAttendees.text = "${reservation.attendees} people"
         binding.tvPurpose.text = reservation.purpose
 
-        // ──────────────────────────────────────────
-        // 2) 닫기 버튼
-        // ──────────────────────────────────────────
+        // 닫기 버튼
         binding.btnClose.setOnClickListener { dismiss() }
 
-        // ──────────────────────────────────────────
-        // 🔥 3) 상태별 버튼 표시
-        // approved  → 취소 버튼
-        // finished  → 정보등록 버튼
-        // canceled  → 버튼 없음
-        // ──────────────────────────────────────────
+        // ──────────────────────────────────────
+        // 2) 상태별 버튼 UI
+        // ──────────────────────────────────────
         when (reservation.status) {
 
             "approved" -> {
@@ -52,7 +64,8 @@ class ReservationDetailDialogFS(
                 binding.btnCancel.text = "Cancel Reservation"
                 binding.btnCancel.isEnabled = true
                 binding.btnCancel.setTextColor(ContextCompat.getColor(requireContext(), R.color.red))
-                binding.btnCancel.strokeColor = ContextCompat.getColorStateList(requireContext(), R.color.red)
+                binding.btnCancel.strokeColor =
+                    ContextCompat.getColorStateList(requireContext(), R.color.red)
 
                 binding.btnCancel.setOnClickListener {
                     onCancelClick(reservation.id)
@@ -68,7 +81,12 @@ class ReservationDetailDialogFS(
                 binding.btnRegisterInfo.isEnabled = true
                 binding.btnRegisterInfo.backgroundTintList =
                     ContextCompat.getColorStateList(requireContext(), R.color.colorPrimary)
-                binding.btnRegisterInfo.setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
+                binding.btnRegisterInfo.setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.white
+                    )
+                )
 
                 binding.btnRegisterInfo.setOnClickListener {
                     onRegisterClick(reservation.id)
@@ -77,11 +95,10 @@ class ReservationDetailDialogFS(
             }
 
             "canceled" -> {
-                binding.btnRegisterInfo.visibility = View.GONE
                 binding.btnCancel.visibility = View.GONE
+                binding.btnRegisterInfo.visibility = View.GONE
             }
         }
-
 
         val dialog = AlertDialog.Builder(requireActivity())
             .setView(binding.root)
@@ -91,7 +108,6 @@ class ReservationDetailDialogFS(
         return dialog
     }
 
-    /** period(교시) → 시간 텍스트 */
     private fun periodToTime(period: Int): String {
         val hour = 8 + period
         return String.format("%02d:00", hour)

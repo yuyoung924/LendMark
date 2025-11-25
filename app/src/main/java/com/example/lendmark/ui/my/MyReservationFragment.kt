@@ -25,6 +25,7 @@ class MyReservationFragment : Fragment() {
     private val uid = FirebaseAuth.getInstance().currentUser?.uid
 
     private var reservationList: List<ReservationFS> = emptyList()
+    private var buildingNameMap: Map<String, String> = emptyMap()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -47,29 +48,42 @@ class MyReservationFragment : Fragment() {
     private fun loadReservations() {
         if (uid == null) return
 
-        db.collection("reservations")
-            .whereEqualTo("userId", uid)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                reservationList = snapshot.documents.map { doc ->
-                    ReservationFS(
-                        id = doc.id,
-                        buildingId = doc.getString("buildingId") ?: "",
-                        roomId = doc.getString("roomId") ?: "",
-                        date = doc.getString("date") ?: "",
-                        day = doc.getString("day") ?: "",
-                        periodStart = doc.getLong("periodStart")?.toInt() ?: 0,
-                        periodEnd = doc.getLong("periodEnd")?.toInt() ?: 0,
-                        attendees = doc.getLong("people")?.toInt() ?: 0,
-                        purpose = doc.getString("purpose") ?: "",
-                        status = doc.getString("status") ?: "approved"
-                    )
-                }.sortedByDescending { it.date } // 날짜 최신순으로 정렬
+        // 1. Load building names first
+        db.collection("buildings").get()
+            .addOnSuccessListener { buildingsSnapshot ->
+                if (!isAdded) return@addOnSuccessListener
+                buildingNameMap = buildingsSnapshot.documents.associate {
+                    it.id to (it.getString("name") ?: "")
+                }
 
-                displayReservations()
+                // 2. Then, load reservations
+                db.collection("reservations")
+                    .whereEqualTo("userId", uid)
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        reservationList = snapshot.documents.map { doc ->
+                            ReservationFS(
+                                id = doc.id,
+                                buildingId = doc.getString("buildingId") ?: "",
+                                roomId = doc.getString("roomId") ?: "",
+                                date = doc.getString("date") ?: "",
+                                day = doc.getString("day") ?: "",
+                                periodStart = doc.getLong("periodStart")?.toInt() ?: 0,
+                                periodEnd = doc.getLong("periodEnd")?.toInt() ?: 0,
+                                attendees = doc.getLong("people")?.toInt() ?: 0,
+                                purpose = doc.getString("purpose") ?: "",
+                                status = doc.getString("status") ?: "approved"
+                            )
+                        }.sortedByDescending { it.date } // Sort by most recent date
+
+                        displayReservations()
+                    }
+                    .addOnFailureListener {
+                        if (isAdded) Toast.makeText(requireContext(), "Failed to load reservations", Toast.LENGTH_SHORT).show()
+                    }
             }
             .addOnFailureListener {
-                Toast.makeText(requireContext(), "Failed to load reservations", Toast.LENGTH_SHORT).show()
+                if (isAdded) Toast.makeText(requireContext(), "Failed to load building data", Toast.LENGTH_SHORT).show()
             }
     }
 
@@ -100,7 +114,8 @@ class MyReservationFragment : Fragment() {
             val btnCancel = card.findViewById<MaterialButton>(R.id.btnCancel)
             val btnRegisterInfo = card.findViewById<MaterialButton>(R.id.btnRegisterInfo)
 
-            tvBuildingRoom.text = "${reservation.buildingId} ${reservation.roomId}"
+            val buildingName = buildingNameMap[reservation.buildingId] ?: ""
+            tvBuildingRoom.text = "${reservation.buildingId}. $buildingName — no. ${reservation.roomId}"
             tvDateTime.text = "${reservation.date} • ${periodToTime(reservation.periodStart)} - ${periodToTime(reservation.periodEnd + 1)}"
             tvAttendees.text = "Attendees: ${reservation.attendees}"
             tvPurpose.text = "Purpose: ${reservation.purpose}"

@@ -15,21 +15,24 @@
         android:orientation="vertical">
 
         <!-- Status Filter -->
+
+        <!-- 여기!! Firestore에서 동적으로 카드가 붙는 공간 -->
+
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/filterGroup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:singleSelection="true"
-            app:selectionRequired="true">
+            app:selectionRequired="true"
+            app:singleSelection="true">
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/filterAll"
                 style="@style/Widget.App.Chip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="All"
-                android:checked="true"/>
+                android:checked="true"
+                android:text="All" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/filterApproved"
@@ -46,7 +49,6 @@
                 android:text="Finished" />
         </com.google.android.material.chip.ChipGroup>
 
-        <!-- 🔥 여기!! Firestore에서 동적으로 카드가 붙는 공간 -->
         <LinearLayout
             android:id="@+id/reservationContainer"
             android:layout_width="match_parent"
