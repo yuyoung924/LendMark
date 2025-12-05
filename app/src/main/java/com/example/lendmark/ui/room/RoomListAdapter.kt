@@ -1,5 +1,6 @@
 package com.example.lendmark.ui.room
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -33,7 +34,10 @@ class RoomListAdapter(
             tvFloor.text = room.floor
 
             // 카드 전체 클릭 → 예약 가능한 시간표로 이동
-            root.setOnClickListener { onRoomClick(room) }
+            root.setOnClickListener {
+                Log.d("ROOM_LIST", "Room clicked: ${room.roomId}")
+                onRoomClick(room)
+            }
 
             // 하단 “강의실 정보 보기”
             tvMoreInfo.setOnClickListener { onMoreInfoClick(room) }

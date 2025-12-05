@@ -6,7 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.lendmark.R
 import com.example.lendmark.databinding.FragmentHomeBinding
@@ -23,7 +23,8 @@ class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
 
-    private val homeViewModel: HomeViewModel by viewModels()
+    private val homeViewModel: HomeViewModel by activityViewModels()
+
     private val db = FirebaseFirestore.getInstance()
 
     override fun onCreateView(
@@ -43,10 +44,15 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupUI() {
+
         binding.recyclerFrequentlyUsed.layoutManager =
             LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
 
         binding.recyclerBuildingList.layoutManager =
+            LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+
+        // ⭐⭐⭐ 최근 본 강의실 추가
+        binding.recyclerRecentlyViewed.layoutManager =
             LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
 
         binding.tvSeeAllBuildings.setOnClickListener {
@@ -84,7 +90,19 @@ class HomeFragment : Fragment() {
                 loadReservationAndShowDialog(info.reservationId)
             }
         }
+
+        //------------------------------------------
+        // ⭐⭐⭐ 여기 추가!! 최근 본 강의실 Observe
+        //------------------------------------------
+        homeViewModel.recentViewedRooms.observe(viewLifecycleOwner) { rooms ->
+            binding.recyclerRecentlyViewed.adapter =
+                com.example.lendmark.ui.home.adapter.RecentlyViewedRoomsAdapter(rooms)
+
+            binding.recyclerRecentlyViewed.visibility =
+                if (rooms.isEmpty()) View.GONE else View.VISIBLE
+        }
     }
+
 
     private fun loadReservationAndShowDialog(reservationId: String) {
         db.collection("reservations").document(reservationId)

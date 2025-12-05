@@ -39,6 +39,7 @@ class MyReservationFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+
         binding.filterGroup.check(R.id.filterAll)
         binding.filterGroup.setOnCheckedChangeListener { _, _ -> displayReservations() }
 
