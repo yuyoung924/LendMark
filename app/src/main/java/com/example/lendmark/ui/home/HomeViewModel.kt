@@ -3,13 +3,16 @@ package com.example.lendmark.ui.home
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.lendmark.data.local.RecentRoomEntity
 import com.example.lendmark.ui.home.adapter.Announcement
 import com.example.lendmark.ui.home.adapter.Room
+import com.example.lendmark.ui.main.MyApp
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
 
-// Firestore 기반 Upcoming 예약
 data class UpcomingReservationInfo(
     val reservationId: String,
     val roomName: String,
@@ -30,20 +33,56 @@ class HomeViewModel : ViewModel() {
     private val _upcomingReservation = MutableLiveData<UpcomingReservationInfo?>()
     val upcomingReservation: LiveData<UpcomingReservationInfo?> = _upcomingReservation
 
-    fun loadHomeData() {
+    private val _recentViewedRooms = MutableLiveData<List<RecentRoomEntity>>()
+    val recentViewedRooms: LiveData<List<RecentRoomEntity>> = _recentViewedRooms
 
-        // (1) 홈 공지
+
+    fun loadHomeData() {
+        // 공지
         _announcements.value = listOf(
             Announcement("Announcement", "Mon - Fri 09:00 - 18:00\nHolidays and vacations are closed"),
             Announcement("Review Event", "If you leave a review for your classroom, we will give you a voucher.")
         )
 
-        // (2) Firestore에서 자주 사용하는 강의실 불러오기
         loadFrequentlyUsedRooms()
-
-        // (3) Firestore에서 곧 있을 예약 불러오기
         loadUpcomingReservation()
+        loadRecentViewedRooms()
     }
+
+
+    // ---------------------------------------------------------
+    // ⭐ 1. 최근 본 강의실(LOCAL DB / ROOM)
+    // ---------------------------------------------------------
+
+    fun loadRecentViewedRooms() {
+        viewModelScope.launch {
+            val dao = MyApp.database.recentRoomDao()
+            val rooms = dao.getRecentRooms()
+            _recentViewedRooms.postValue(rooms)
+        }
+    }
+
+    fun addRecentViewedRoom(roomId: String, buildingId: String, roomName: String) {
+        viewModelScope.launch {
+            val dao = MyApp.database.recentRoomDao()
+
+            val entry = RecentRoomEntity(
+                roomId = roomId,
+                buildingId = buildingId,
+                roomName = roomName,
+                viewedAt = System.currentTimeMillis()
+            )
+
+            dao.insertRecentRoom(entry)
+            dao.trimRecentRooms()
+            loadRecentViewedRooms()
+        }
+    }
+
+
+    // ---------------------------------------------------------
+    // ⭐ 2. 자주 사용하는 강의실 (FIRESTORE)
+    // ---------------------------------------------------------
 
     private fun loadFrequentlyUsedRooms() {
         if (uid == null) {
@@ -61,14 +100,12 @@ class HomeViewModel : ViewModel() {
                 }
 
                 val roomCounts = documents.mapNotNull { doc ->
-                    val buildingId = doc.getString("buildingId")
-                    val roomId = doc.getString("roomId")
-                    if (buildingId != null && roomId != null) {
-                        "$buildingId $roomId"
-                    } else {
-                        null
-                    }
-                }.groupingBy { it }.eachCount()
+                    val building = doc.getString("buildingId")
+                    val room = doc.getString("roomId")
+                    if (building != null && room != null) "$building $room" else null
+                }
+                    .groupingBy { it }
+                    .eachCount()
 
                 val topRooms = roomCounts.entries
                     .sortedByDescending { it.value }
@@ -78,10 +115,14 @@ class HomeViewModel : ViewModel() {
                 _frequentlyUsedRooms.value = topRooms
             }
             .addOnFailureListener {
-                _frequentlyUsedRooms.value = emptyList() // Handle error
+                _frequentlyUsedRooms.value = emptyList()
             }
     }
 
+
+    // ---------------------------------------------------------
+    // ⭐ 3. 곧 있을 예약 (FIRESTORE)
+    // ---------------------------------------------------------
 
     private fun loadUpcomingReservation() {
         if (uid == null) {
@@ -92,12 +133,11 @@ class HomeViewModel : ViewModel() {
         db.collection("reservations")
             .whereEqualTo("userId", uid)
             .whereEqualTo("status", "approved")
-            .whereGreaterThanOrEqualTo("timestamp", Timestamp.now()) // 올바른 "곧 있을" 예약 로직
+            .whereGreaterThanOrEqualTo("timestamp", Timestamp.now())
             .orderBy("timestamp")
             .limit(1)
             .get()
             .addOnSuccessListener { snap ->
-
                 if (snap.isEmpty) {
                     _upcomingReservation.value = null
                     return@addOnSuccessListener
@@ -107,16 +147,16 @@ class HomeViewModel : ViewModel() {
 
                 val buildingId = doc.getString("buildingId") ?: ""
                 val roomId = doc.getString("roomId") ?: ""
-                val periodStart = doc.getLong("periodStart")?.toInt() ?: 0
-                val periodEnd = doc.getLong("periodEnd")?.toInt() ?: 0
+                val start = doc.getLong("periodStart")?.toInt() ?: 0
+                val end = doc.getLong("periodEnd")?.toInt() ?: 0
                 val date = doc.getString("date") ?: ""
 
-                val time = "${periodToTime(periodStart)} - ${periodToTime(periodEnd)}"
+                val timeText = "${periodToTime(start)} - ${periodToTime(end)}"
 
                 _upcomingReservation.value = UpcomingReservationInfo(
                     reservationId = doc.id,
                     roomName = "$buildingId $roomId",
-                    time = "$date • $time"
+                    time = "$date • $timeText"
                 )
             }
             .addOnFailureListener {
@@ -124,8 +164,11 @@ class HomeViewModel : ViewModel() {
             }
     }
 
+
     private fun periodToTime(period: Int): String {
         val hour = 8 + period
         return String.format("%02d:00", hour)
     }
+
+
 }

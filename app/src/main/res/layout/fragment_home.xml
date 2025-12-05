@@ -34,20 +34,18 @@
                     android:layout_marginEnd="8dp"
                     android:layout_marginBottom="3dp"
                     android:background="@drawable/oval_white"
-                    android:clickable="true"
-                    android:contentDescription="Chatbot Icon"
-                    android:elevation="6dp"
-                    android:focusable="true"
-                    android:outlineProvider="background"
+                    android:src="@drawable/chatbot"
                     android:padding="8dp"
-                    android:src="@drawable/chatbot" />
+                    android:elevation="6dp"
+                    android:clickable="true"
+                    android:focusable="true" />
 
                 <EditText
                     android:id="@+id/searchBar"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
                     android:layout_toStartOf="@+id/iv_chatbot"
+                    android:layout_marginEnd="8dp"
                     android:background="@drawable/bg_search_bar"
                     android:drawableStart="@drawable/ic_search"
                     android:drawablePadding="8dp"
@@ -71,7 +69,8 @@
                 android:layout_height="100dp"
                 android:layout_marginTop="8dp"/>
 
-            <!-- Frequently Used Rooms Section -->
+
+            <!-- Frequently Used Rooms -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -83,20 +82,39 @@
                 android:id="@+id/recyclerFrequentlyUsed"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:layout_marginTop="8dp"/>
+
+
+            <!-- ⭐ Recently Viewed Rooms -->
+            <TextView
+                android:id="@+id/tvRecentlyViewedTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Recently Viewed Rooms"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginTop="24dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerRecentlyViewed"
+                android:layout_width="match_parent"
+                android:layout_height="80dp"
+                android:layout_marginTop="8dp" />
+
 
             <!-- Building List Section -->
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp">
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Building List"
                     android:textSize="18sp"
                     android:textStyle="bold" />
+
                 <TextView
                     android:id="@+id/tvSeeAllBuildings"
                     android:layout_width="wrap_content"
@@ -104,6 +122,7 @@
                     android:text="See all >"
                     android:layout_alignParentEnd="true" />
             </RelativeLayout>
+
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerBuildingList"
                 android:layout_width="match_parent"
@@ -112,6 +131,7 @@
 
         </LinearLayout>
     </ScrollView>
+
 
     <!-- Upcoming Reservation Floating View -->
     <include

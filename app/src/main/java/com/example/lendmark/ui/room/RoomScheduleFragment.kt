@@ -32,6 +32,10 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
+import androidx.fragment.app.activityViewModels
+import com.example.lendmark.ui.home.HomeViewModel
+import android.util.Log
+
 
 class RoomScheduleFragment : Fragment() {
 
@@ -76,6 +80,9 @@ class RoomScheduleFragment : Fragment() {
     private data class SelectedRange(var day: Int, var start: Int, var end: Int)
     private var selectedRange: SelectedRange? = null
 
+    private val homeViewModel: HomeViewModel by activityViewModels()
+
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -94,6 +101,9 @@ class RoomScheduleFragment : Fragment() {
         buildingId = arguments?.getString("buildingId") ?: ""
         roomId = arguments?.getString("roomId") ?: ""
         buildingName = arguments?.getString("buildingName") ?: "건물"
+
+        // ⭐ 추가: 최근 본 강의실 저장
+        saveRecentlyViewedRoom()
 
         binding.tvRoomTitle.text = "$buildingName ${roomId}호"
 
@@ -989,5 +999,18 @@ class RoomScheduleFragment : Fragment() {
             tv.setOnClickListener(null)
             cellState[key] = SlotState.RESERVED
         }
+    }
+    private fun saveRecentlyViewedRoom() {
+        if (buildingId.isBlank() || roomId.isBlank()) return
+
+        val roomName = "$buildingName $roomId"
+
+        Log.d("RECENT", "Saving recent room: $roomName")
+
+        homeViewModel.addRecentViewedRoom(
+            roomId = roomId,
+            buildingId = buildingId,
+            roomName = roomName
+        )
     }
 }
