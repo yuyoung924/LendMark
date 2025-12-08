@@ -101,6 +101,7 @@ class HomeViewModel : ViewModel() {
                     return@addOnSuccessListener
                 }
 
+                // 1. 가장 많이 쓴 강의실 top 3 계산
                 val roomCounts = docs.mapNotNull { doc ->
                     val b = doc.getString("buildingId")
                     val r = doc.getString("roomId")
@@ -110,18 +111,27 @@ class HomeViewModel : ViewModel() {
                 val top = roomCounts.entries.sortedByDescending { it.value }.take(3)
                 val result = mutableListOf<Room>()
 
-                top.forEach { entry ->
-                    val (buildingId, roomId) = entry.key.split(" ")
-                    db.collection("buildings").document(buildingId)
-                        .get()
-                        .addOnSuccessListener { doc ->
-                            val img = doc.getString("imageUrl") ?: ""
-                            result.add(Room("$buildingId Hall $roomId", img))
+                // 2. 건물 정보 가져와서 이름으로 변환
+                if (top.isEmpty()) {
+                    _frequentlyUsedRooms.value = emptyList()
+                } else {
+                    top.forEach { entry ->
+                        val (buildingId, roomId) = entry.key.split(" ")
 
-                            if (result.size == top.size) {
-                                _frequentlyUsedRooms.value = result
+                        db.collection("buildings").document(buildingId)
+                            .get()
+                            .addOnSuccessListener { doc ->
+                                val img = doc.getString("imageUrl") ?: ""
+                                val buildingName = doc.getString("name") ?: buildingId // 건물명 가져오기
+
+                                // "건물명 호실" 형태로 저장 (예: Dasan Hall 110)
+                                result.add(Room("$buildingName $roomId", img))
+
+                                if (result.size == top.size) {
+                                    _frequentlyUsedRooms.value = result
+                                }
                             }
-                        }
+                    }
                 }
             }
     }
@@ -133,42 +143,34 @@ class HomeViewModel : ViewModel() {
             return
         }
 
-        // 1. 쿼리 수정: 'timestamp' 정렬 제거 (데이터에 없을 확률 높음)
+        // 1. 예약 정보 가져오기
         db.collection("reservations")
             .whereEqualTo("userId", uid)
-            .whereEqualTo("status", "approved") // 승인된 예약만 가져오기
+            .whereEqualTo("status", "approved")
             .get()
             .addOnSuccessListener { snap ->
                 if (snap.isEmpty) {
-                    Log.d("HomeVM", "예약 없음")
                     _upcomingReservation.value = null
                     return@addOnSuccessListener
                 }
 
                 val now = System.currentTimeMillis()
-                val oneHourInMillis = 60 * 60 * 1000 // 1시간
+                val oneHourInMillis = 60 * 60 * 1000
                 val oneHourLater = now + oneHourInMillis
 
-                // 2. 모든 예약을 순회하며 '1시간 이내'인 것 찾기
+                // 2. 1시간 이내 예약 찾기
                 val targetDoc = snap.documents.firstOrNull { doc ->
-                    val dateStr = doc.getString("date") ?: ""       // 예: "2025-12-09"
+                    val dateStr = doc.getString("date") ?: ""
                     val periodStart = doc.getLong("periodStart")?.toInt() ?: -1
 
                     if (dateStr.isNotEmpty() && periodStart != -1) {
-                        // 날짜와 교시를 시간(millis)으로 변환
                         val startTimeMillis = convertToMillis(dateStr, periodStart)
-
-                        // 로그 찍어서 확인해보기 (Logcat에서 'HomeVM' 검색)
-                        Log.d("HomeVM", "예약시간: $startTimeMillis, 현재시간: $now, 차이: ${(startTimeMillis - now) / 1000 / 60}분")
-
-                        // 조건: 현재 시간보다는 미래이고, 1시간 이내에 시작하는가?
                         startTimeMillis in now..oneHourLater
                     } else {
                         false
                     }
                 }
 
-                // 3. 찾은 결과가 있으면 UI 업데이트
                 if (targetDoc != null) {
                     val buildingId = targetDoc.getString("buildingId") ?: ""
                     val roomId = targetDoc.getString("roomId") ?: ""
@@ -176,17 +178,36 @@ class HomeViewModel : ViewModel() {
                     val end = targetDoc.getLong("periodEnd")?.toInt() ?: 0
                     val date = targetDoc.getString("date") ?: ""
 
-                    _upcomingReservation.value = UpcomingReservationInfo(
-                        reservationId = targetDoc.id,
-                        roomName = "$buildingId $roomId",
-                        time = "$date • ${periodToTime(start)} - ${periodToTime(end)}"
-                    )
+                    // 3. 건물 이름 가져오기 (Nested Query)
+                    db.collection("buildings").document(buildingId).get()
+                        .addOnSuccessListener { buildingDoc ->
+                            val buildingName = buildingDoc.getString("name") ?: ""
+
+                            // 포맷 변경: "2. Dasan Hall - no.110"
+                            val formattedRoomName = "$buildingName $roomId"
+
+                            // 시간 수정: 끝나는 교시에 +1 (예: 8-9교시 -> 16:00~18:00)
+                            val formattedTime = "$date • ${periodToTime(start)} - ${periodToTime(end + 1)}"
+
+                            _upcomingReservation.value = UpcomingReservationInfo(
+                                reservationId = targetDoc.id,
+                                roomName = formattedRoomName,
+                                time = formattedTime
+                            )
+                        }
+                        .addOnFailureListener {
+                            // 건물 정보 실패 시 기존 방식대로
+                            _upcomingReservation.value = UpcomingReservationInfo(
+                                reservationId = targetDoc.id,
+                                roomName = "$buildingId $roomId",
+                                time = "$date • ${periodToTime(start)} - ${periodToTime(end + 1)}"
+                            )
+                        }
                 } else {
                     _upcomingReservation.value = null
                 }
             }
-            .addOnFailureListener { e ->
-                Log.e("HomeVM", "DB 에러: ${e.message}")
+            .addOnFailureListener {
                 _upcomingReservation.value = null
             }
     }
