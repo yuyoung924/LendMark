@@ -46,18 +46,28 @@ class LoginFragment : Fragment() {
 
         // 관찰자: 성공/실패 메시지는 Event 래퍼로 1회만 표시
         viewModel.loginResult.observe(viewLifecycleOwner) { event ->
-            event.getContentIfNotHandled()?.let { success ->
-                if (success) {
-                    Toast.makeText(requireContext(), "Login successful!", Toast.LENGTH_SHORT).show()
+            val uid = event.getContentIfNotHandled()
 
-                    // MainActivity로 이동
-                    val intent = Intent(requireContext(), MainActivity::class.java)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-                    startActivity(intent)
-                    requireActivity().finish()  // 로그인 화면 종료
-                }
+            if (uid != null) {
+                // 로그인 성공 → Firestore 플래그 검사
+                viewModel.checkMustChangePassword(uid)
             }
         }
+
+        viewModel.mustChangePassword.observe(viewLifecycleOwner) { needChange ->
+            if (needChange) {
+                // 🔥 임시 비번 로그인 → 비밀번호 변경 화면으로 강제 이동
+                findNavController().navigate(R.id.action_login_to_changePassword)
+            } else {
+                // 정상 로그인 → 메인 화면 이동
+                val intent = Intent(requireContext(), MainActivity::class.java)
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                requireActivity().finish()
+            }
+        }
+
+
 
         viewModel.errorMessage.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandled()?.let { msg ->

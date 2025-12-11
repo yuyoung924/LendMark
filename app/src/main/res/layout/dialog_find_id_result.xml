@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/bg_dialog_round">
+
+    <TextView
+        android:id="@+id/tvDialogTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="아이디 찾기 결과"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#190848" />
+
+    <TextView
+        android:id="@+id/tvDialogMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="회원님의 아이디는 email 입니다."
+        android:textSize="15sp"
+        android:textColor="#333333" />
+
+    <Button
+        android:id="@+id/btnDialogConfirm"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="24dp"
+        android:text="확인"
+        android:textColor="@color/white"
+        android:backgroundTint="#190848"
+        android:stateListAnimator="@null"
+        android:background="@drawable/bg_primary_button" />
+
+</LinearLayout>

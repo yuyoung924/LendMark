@@ -96,6 +96,58 @@ exports.verifyEmailCode = onCall({ region: "us-central1" }, async (req) => {
 
 
 
+exports.sendTempPassword = onCall({ region: "asia-northeast3" }, async (req) => {
+  try {
+    const email = (req.data?.email || "").trim().toLowerCase();
+
+    // 이메일 체크는 앱에서 이미 끝났으므로 여기선 바로 진행
+
+    // Firestore에서 uid 가져오기
+    const snap = await admin.firestore()
+      .collection("users")
+      .where("email", "==", email)
+      .limit(1)
+      .get();
+
+    const userId = snap.docs[0].id;
+
+    // 임시 비밀번호 생성
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    let tempPassword = "";
+    for (let i = 0; i < 10; i++) {
+      tempPassword += chars[Math.floor(Math.random() * chars.length)];
+    }
+
+    // Auth 비밀번호 변경
+    await admin.auth().updateUser(userId, { password: tempPassword });
+
+    // 플래그 설정
+    await admin.firestore().collection("users").doc(userId).update({
+      mustChangePassword: true,
+      passwordUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // 이메일 발송
+    await transporter.sendMail({
+      from: `"LendMark" <${gmailUser}>`,
+      to: email,
+      subject: "[LendMark] Temporary Password",
+      html: `
+        <h2>Your Temporary Password</h2>
+        <h1>${tempPassword}</h1>
+        <p>Please log in and change it immediately.</p>
+      `,
+    });
+
+    return { ok: true };
+  } catch (err) {
+    console.error("sendTempPassword ERROR:", err);
+    return { ok: false, reason: "ERROR", message: err.message };
+  }
+});
+
+
+
 /*******************************************************
  * 2. 예약 상태 자동 업데이트
  *******************************************************/

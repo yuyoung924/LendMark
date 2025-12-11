@@ -16,6 +16,13 @@
         <action
             android:id="@+id/action_login_to_findAccount"
             app:destination="@id/findAccountFragment" />
+
+        <action
+            android:id="@+id/action_login_to_changePassword"
+            app:destination="@id/changePasswordFragment"
+            app:popUpTo="@id/loginFragment"
+            app:popUpToInclusive="true" />
+
     </fragment>
 
     <fragment
@@ -27,6 +34,17 @@
             android:id="@+id/action_signup_to_login"
             app:destination="@id/loginFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/changePasswordFragment"
+        android:name="com.example.lendmark.ui.auth.findaccount.ChangePasswordFragment"
+        android:label="Change Password">
+        <action
+        android:id="@+id/action_login_to_changePassword"
+        app:destination="@id/changePasswordFragment" />
+    </fragment>
+
+
 
     <fragment
         android:id="@+id/findAccountFragment"

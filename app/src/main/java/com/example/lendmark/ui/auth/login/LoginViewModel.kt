@@ -12,13 +12,14 @@ class LoginViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
 
-    private val _loginResult = MutableLiveData<Event<Boolean>>()
-    val loginResult: LiveData<Event<Boolean>> get() = _loginResult
+    // 🔥 로그인 성공 시 Boolean이 아닌 uid를 반환해야 함
+    private val _loginResult = MutableLiveData<Event<String?>>()
+    val loginResult: LiveData<Event<String?>> get() = _loginResult
 
     private val _errorMessage = MutableLiveData<Event<String>>()
     val errorMessage: LiveData<Event<String>> get() = _errorMessage
 
-    // 로그인 함수
+    // 🔐 로그인
     fun login(email: String, password: String) {
         if (email.isBlank() || password.isBlank()) {
             _errorMessage.value = Event("Please enter both email and password.")
@@ -27,23 +28,48 @@ class LoginViewModel : ViewModel() {
 
         auth.signInWithEmailAndPassword(email, password)
             .addOnSuccessListener { result ->
-                val uid = result.user?.uid ?: return@addOnSuccessListener
+                val uid = result.user?.uid
 
-                // Firestore에서 유저 정보 확인
+                if (uid == null) {
+                    _errorMessage.value = Event("Login failed: UID is null.")
+                    _loginResult.value = Event(null)
+                    return@addOnSuccessListener
+                }
+
+                // Firestore 사용자 데이터 확인
                 db.collection("users").document(uid).get()
                     .addOnSuccessListener { doc ->
                         if (doc.exists()) {
-                            _loginResult.value = Event(true)
+                            // 🔥 여기서 uid를 넘김
+                            _loginResult.value = Event(uid)
                         } else {
                             _errorMessage.value = Event("User data not found in Firestore.")
+                            _loginResult.value = Event(null)
                         }
                     }
                     .addOnFailureListener {
                         _errorMessage.value = Event("Failed to fetch user data: ${it.message}")
+                        _loginResult.value = Event(null)
                     }
             }
             .addOnFailureListener {
                 _errorMessage.value = Event("Login failed: ${it.message}")
+                _loginResult.value = Event(null)
+            }
+    }
+
+    // 🔥 Firestore의 mustChangePassword 값 감시
+    private val _mustChangePassword = MutableLiveData<Boolean>()
+    val mustChangePassword: LiveData<Boolean> get() = _mustChangePassword
+
+    fun checkMustChangePassword(uid: String) {
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { doc ->
+                val need = doc.getBoolean("mustChangePassword") ?: false
+                _mustChangePassword.value = need
+            }
+            .addOnFailureListener {
+                _mustChangePassword.value = false
             }
     }
 }
